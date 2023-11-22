@@ -134,7 +134,7 @@ def filter_contours(input_contours: list[np.ndarray], min_area: float, min_perim
     return output
 
 
-def detect_contours(image: np.ndarray) -> np.ndarray:
+def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
     """
     Detect page contours in an image.
     :param img: Image to detect contours in.
@@ -224,7 +224,7 @@ def detect_contours(image: np.ndarray) -> np.ndarray:
 
             x,y,w,h = cv2.boundingRect(contour)
             area_bounding = w*h
-            
+
             if solidity < 0.7:
                 continue
             if 4 <= len(approx) <= 4 and area < area_img*0.80 and area > area_img*0.30:
@@ -247,7 +247,7 @@ def detect_contours(image: np.ndarray) -> np.ndarray:
     print("STEP 2: Find contours of paper")
     # cv2.drawContours(image, [screenCnt], -1, (0, 255, 0), 2)
     # cv2.imwrite('./src./images/Outline.png', image)
-    
+
     output: np.ndarray = imutils.resize(output, height = 400)
     edged: np.ndarray = imutils.resize(edged, height = 400)
     return output_contour, output, edged
@@ -319,7 +319,7 @@ if __name__ == '__main__':
             counter = 0
         img: np.ndarray = cv2.imread(image_dir[counter])
         print(image_dir[counter])
-        
+
         contours, img, edged = detect_contours(img)
         # cv2.imwrite(os.getcwd() + '/output/original.png', img)
         # cv2.imwrite(os.getcwd() + '/output/filtered.png', black_and_white)
