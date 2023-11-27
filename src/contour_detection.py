@@ -8,6 +8,7 @@ from PIL import Image, ImageTk
 import os
 from os import listdir
 import time
+from threading import Thread, current_thread
 
 def order_points(pts):
 	# initialzie a list of coordinates that will be ordered
@@ -145,13 +146,12 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
     ratio: float = image.shape[0] / 500.0
     orig: np.ndarray = image.copy()
     image: np.ndarray = imutils.resize(image, height = 1500)
-    output: np.ndarray = image.copy()
+    image = cv2.bilateralFilter(image, 13, 200, 200)
     output_contour: np.ndarray = None
     area_img: int = image.shape[0] * image.shape[1]
-    # convert the image to grayscale, blur it, and find edges
-    # in the image
+    # convert the image to grayscale, blur it, and find edges in the image
     gray: np.ndarray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    # gray = cv2.GaussianBlur(gray, (7, 7), 0)
     # edged = cv2.Canny(gray, 75, 200, apertureSize=3, L2gradient=True) # kinda good
 
 
@@ -159,19 +159,23 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
 
     # edged = cv2.bitwise_or(edged2, edged)
     print("STEP 1: Edge Detection")
-    for tresh in range(0, 240, 10):
+    for tresh in range(120, 59, -15):
         output: np.ndarray = image.copy()
         found: bool = False
-        edged = cv2.Canny(gray, tresh, tresh + 10, apertureSize=3, L2gradient=True)
+        edged = cv2.Canny(gray, tresh, tresh + 10, apertureSize=5, L2gradient=False)
         # show the original image and the edge detected image
         # cv2.imwrite('./src./images/Image.png', image)
         # cv2.imwrite('./src./images/gray.png', gray)
-        edged = cv2.GaussianBlur(edged, (1, 1), 0)
-        # edged = cv2.medianBlur(edged, 3)
-        _, edged = cv2.threshold(edged, 127, 255, cv2.THRESH_BINARY)
+        # _, edged = cv2.threshold(edged, 127, 255, cv2.THRESH_BINARY)
         edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
-        # edged = cv2.erode(edged, kernel=None, anchor=(-1, -1), iterations=1, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
-        # edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=4, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
+        # edged = cv2.medianBlur(edged, 3)
+        # edged = cv2.GaussianBlur(edged, (3, 3), 0)
+        
+        #edged = cv2.erode(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
+        #edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
+        
+        #edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
+        #edged = cv2.erode(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
         edged = remove_edge(edged)
         # cv2.imwrite('./src./images/Edged.png', edged)
 
@@ -179,66 +183,71 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
         # largest ones, and initialize the screen contour
         contours: tuple = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-        filter_contours_min_area: float = 1000.0
-        filter_contours_min_perimeter: float = 100.0
-        filter_contours_min_width: float = 10.0
-        filter_contours_max_width: float = 10000.0
-        filter_contours_min_height: float = 10.0
-        filter_contours_max_height: float = 10000.0
-        filter_contours_solidity: list[float, float] = [0, 100]
-        filter_contours_max_vertices: float = 1000000.0
-        filter_contours_min_vertices: float = 0.0
-        filter_contours_min_ratio: float = 0.0
-        filter_contours_max_ratio: float = 1000.0
-
         contours: tuple = imutils.grab_contours(contours)
-        cnts: list = sorted(contours, key = cv2.contourArea, reverse = True)[:5]
-        cnts = cnts[1:-1]
-        cnts = filter_contours(cnts,
-                                filter_contours_min_area,
-                                filter_contours_min_perimeter,
-                                filter_contours_min_width,
-                                filter_contours_max_width,
-                                filter_contours_min_height,
-                                filter_contours_max_height,
-                                filter_contours_solidity,
-                                filter_contours_max_vertices,
-                                filter_contours_min_vertices,
-                                filter_contours_min_ratio,
-                                filter_contours_max_ratio)
+        cnts: list = sorted(contours, key = cv2.contourArea, reverse = True)
+
+        if True:
+            filter_contours_min_area: float = image.shape[0] * image.shape[1] * 0.1
+            filter_contours_min_perimeter: float = 100.0
+            filter_contours_min_width: float = image.shape[1] * 0.30
+            filter_contours_max_width: float = image.shape[1] * 0.99
+            filter_contours_min_height: float = image.shape[0] * 0.30
+            filter_contours_max_height: float = image.shape[0] * 0.99
+            filter_contours_solidity: list[float, float] = [0, 100]
+            filter_contours_max_vertices: float = 1000000.0
+            filter_contours_min_vertices: float = 0.0
+            filter_contours_min_ratio: float = 0.0
+            filter_contours_max_ratio: float = 6
+            cnts = filter_contours(cnts,
+                                    filter_contours_min_area,
+                                    filter_contours_min_perimeter,
+                                    filter_contours_min_width,
+                                    filter_contours_max_width,
+                                    filter_contours_min_height,
+                                    filter_contours_max_height,
+                                    filter_contours_solidity,
+                                    filter_contours_max_vertices,
+                                    filter_contours_min_vertices,
+                                    filter_contours_min_ratio,
+                                    filter_contours_max_ratio)
+        print(len(cnts))
         # loop over the contours
         screenCnt: np.ndarray = None
         contour: np.ndarray
         for contour in cnts:
-            contour = cv2.convexHull(contour)
+            # area = cv2.contourArea(contour)
+            hull = cv2.convexHull(contour)
+            # hull_area = cv2.contourArea(hull)
+            # solidity = float(area)/hull_area
+            contour = hull
             # approximate the contour
             peri: int = cv2.arcLength(contour, True)
             # approx: np.ndarray = cv2.approxPolyDP(contour, 0.007 * peri, True)
             # approx: np.ndarray = cv2.approxPolyDP(contour, epsilon=0.05 * peri, closed=True)
             approx: np.ndarray = cv2.approxPolyDP(contour, epsilon=0.02 * peri, closed=True)
             # print(len(approx))
-            area = cv2.contourArea(contour)
-            hull = cv2.convexHull(contour)
-            hull_area = cv2.contourArea(hull)
-            solidity = float(area)/hull_area
 
-            x,y,w,h = cv2.boundingRect(contour)
-            area_bounding = w*h
-
-            if solidity < 0.7:
-                continue
-            if 4 <= len(approx) <= 4 and area < area_img*0.80 and area > area_img*0.30:
+            # x,y,w,h = cv2.boundingRect(contour)
+            # area_bounding = w*h
+            
+            # if solidity < 0.7:
+            #     print('SOLIDITY')
+            #     continue
+            # if area_bounding / area > 1.20:
+            #     print('AREA')
+            #     continue
+            if 4 <= len(approx) <= 4:
                 cv2.drawContours(output, [contour], -1, (0, 255, 0), 10)
                 screenCnt: np.ndarray = approx
                 # (x,y),(MA,ma),angle = cv2.fitEllipse(contour)
                 # M = cv2.getRotationMatrix2D((image.shape[1] // 2, image.shape[0] // 2), -min(angle%90, abs(90-angle), abs(180-angle)), 1.0)
                 # image = cv2.warpAffine(image, M, (width, height))
                 found = True
-                print(area_bounding / area)
+                # print('area_bounding / area: ' + str(area_bounding / area))
+                # print('solidity: ' + str(solidity))
                 output_contour = contour.copy()
+                print(tresh)
                 break
-            elif area >= area_img*0.95:
-                cv2.drawContours(output, [contour], -1, (255, 0, 0), 10)
             elif len(approx) < 4 or len(approx) > 4:
                 cv2.drawContours(output, [contour], -1, (0, 0, 255), 10)
         if found:
@@ -250,6 +259,7 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
 
     output: np.ndarray = imutils.resize(output, height = 400)
     edged: np.ndarray = imutils.resize(edged, height = 400)
+    gray: np.ndarray = imutils.resize(gray, height = 400)
     return output_contour, output, edged
     if screenCnt is None:
         return output_contour, output, edged
@@ -309,7 +319,7 @@ if __name__ == '__main__':
     folder_dir = "../images"
     image_dir: list[str] = []
     for image in os.listdir(folder_dir):
-        if 'IMG' not in image or False:
+        if 'IMG' in image or True:
             image_dir.append(folder_dir + '/' + image)
 
     def show_frames(counter: int) -> None:
@@ -337,7 +347,7 @@ if __name__ == '__main__':
         label2.imgtk = edgedtk
         label2.configure(image=edgedtk)
         # Repeat after an interval to capture continiously
-        label.after(2000, lambda: show_frames(counter + 1))
+        label.after(500, lambda: show_frames(counter + 1))
 
 
     show_frames(0)
