@@ -170,10 +170,10 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
         edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
         # edged = cv2.medianBlur(edged, 3)
         # edged = cv2.GaussianBlur(edged, (3, 3), 0)
-        
+
         #edged = cv2.erode(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
         #edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
-        
+
         #edged = cv2.dilate(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
         #edged = cv2.erode(edged, kernel=None, anchor=(-1, -1), iterations=2, borderType=cv2.BORDER_CONSTANT, borderValue=(-1))
         edged = remove_edge(edged)
@@ -229,7 +229,7 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
 
             # x,y,w,h = cv2.boundingRect(contour)
             # area_bounding = w*h
-            
+
             # if solidity < 0.7:
             #     print('SOLIDITY')
             #     continue
@@ -260,9 +260,9 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
     output: np.ndarray = imutils.resize(output, height = 400)
     edged: np.ndarray = imutils.resize(edged, height = 400)
     gray: np.ndarray = imutils.resize(gray, height = 400)
-    return output_contour, output, edged
+    return output_contour #, output, edged
     if screenCnt is None:
-        return output_contour, output, edged
+        return output_contour #, output, edged
 
     # apply the four point transform to obtain a top-down
     # view of the original image
@@ -280,10 +280,7 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
     # cv2.imwrite('./src./images/Scanned.png', warped)
 
     warped: np.ndarray = imutils.resize(warped, height = 400)
-    return output_contour, output, warped
-
-    # TODO
-    return np.zeros((1, 2), dtype=np.uint32)
+    return output_contour #, output, warped
 
 
 if __name__ == '__main__':

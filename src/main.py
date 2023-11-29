@@ -9,7 +9,7 @@ import numpy as np
 from color_correction import correct_colors
 from contour_detection import detect_contours
 from dewarp import dewarp_page
-from src.fix_orientation import fix_orientation
+from fix_orientation import fix_orientation
 from text_detection import detect_text_lines
 from utils import ScannerException
 
@@ -71,7 +71,7 @@ def process_image(img: np.ndarray, **kwargs) -> np.ndarray:
     text_lines = detect_text_lines(img, **kwargs)
     img_rotated = fix_orientation(img, text_lines, **kwargs)
     contours = detect_contours(img_rotated, **kwargs)
-    img_dewarped = dewarp_page(img, contours, **kwargs)
+    img_dewarped = dewarp_page(img_rotated, contours, **kwargs)
     img_corrected = correct_colors(img_dewarped, **kwargs)
     return img_corrected
 

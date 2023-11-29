@@ -3,9 +3,9 @@ import argparse
 import cv2
 import numpy as np
 
-from src.contour_detection import detect_contours
-from src.fix_orientation import fix_orientation
-from src.text_detection import detect_text_lines
+from contour_detection import detect_contours
+from fix_orientation import fix_orientation
+from text_detection import detect_text_lines
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input", action="store", type=str, help="Input video")
