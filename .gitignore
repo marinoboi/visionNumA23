@@ -8,3 +8,4 @@ venv/
 in/
 out/
 src/images/
+src/.vscode/launch.json

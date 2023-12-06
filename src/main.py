@@ -68,11 +68,11 @@ def create_config() -> Config:
 
 
 def process_image(img: np.ndarray, **kwargs) -> np.ndarray:
-    text_lines = detect_text_lines(img, **kwargs)
-    img_rotated = fix_orientation(img, text_lines, **kwargs)
-    contours = detect_contours(img_rotated, **kwargs)
-    img_dewarped = dewarp_page(img_rotated, contours, **kwargs)
-    img_corrected = correct_colors(img_dewarped, **kwargs)
+    contours = detect_contours(img, **kwargs)
+    img_dewarped = dewarp_page(img, contours, **kwargs)
+    img_colored = correct_colors(img_dewarped, **kwargs)
+    text_lines = detect_text_lines(img_colored, **kwargs)
+    img_corrected= fix_orientation(img_colored, text_lines, **kwargs)
     return img_corrected
 
 
