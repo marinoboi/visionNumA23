@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-from skimage.filters import threshold_local
-from imutils.object_detection import non_max_suppression
+import imutils
 import imutils
 from tkinter import Tk, Label, Frame
 from PIL import Image, ImageTk
@@ -9,6 +8,8 @@ import os
 from os import listdir
 import time
 from threading import Thread, current_thread
+# from skimage.filters import threshold_local
+# from imutils.object_detection import non_max_suppression
 
 def order_points(pts):
 	# initialzie a list of coordinates that will be ordered
