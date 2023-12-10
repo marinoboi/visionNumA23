@@ -26,9 +26,9 @@ def detect_text_lines(img: np.ndarray, **kwargs) -> np.ndarray:
     lines = lsd.detect(img_edges)[0]
     if lines is None:
         lines = np.zeros((0, 1, 4))
-    # Remove lines with extreme angles (too vertical, >15°)
+    # Remove lines with extreme angles (too vertical, >15°). +1e-9 to avoid division by zero.
     line_angles = np.abs(np.arctan((lines[:, 0, 1] - lines[:, 0, 3]) /
-                                   (lines[:, 0, 0] - lines[:, 0, 2])))
+                                   (lines[:, 0, 0] - lines[:, 0, 2] + 1e-9)))
     lines = lines[line_angles < np.radians(30), :, :]
     logging.info(f"{lines.shape[0]} text line segments detected")
 

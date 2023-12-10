@@ -1,12 +1,13 @@
 # Environments
 venv/
 .env/
+__pycache__/
 
-# PyCharm
+# IDE
 .idea/
+.vscode/
 
 # Input & output folders
 in/
 out/
 src/images/
-src/.vscode/launch.json
