@@ -1,96 +1,202 @@
 import cv2
 import numpy as np
 
+GRID_CELLS_H = 20
+GRID_CELLS_V = 10
 
-def dewarp_page(img: np.ndarray, contours: np.ndarray, **kwargs) -> np.ndarray:
+
+def dewarp_page(img: np.ndarray, contour: np.ndarray, **kwargs) -> np.ndarray:
     """
     Dewarp and crop the image using the contours.
-    :param img: Image to dewarp (not modified).
+    :param img: Image to dewarp (not modified in place).
+    :param contour: Contour points in image, in *clockwise order* (this is important).
     :return: Dewarped image
     """
-    # Find the extremities
-    corners = find_extremities(contours)
-    rect, dst, width, height = calculate_params(corners)
+    corners = find_corners(contour)
+    # +1 here because to have N cells we need N+1 points.
+    edges = interpolate_edges(contour, corners, nh=GRID_CELLS_H + 1, nv=GRID_CELLS_V + 1)
 
-    M = cv2.getPerspectiveTransform(rect, dst)
+    src_grid = create_source_grid(edges)
+    dst_grid = create_destination_grid(edges)
 
-    return cv2.warpPerspective(img, M, (int(width), int(height)))
+    img_dewarp = transform_grid(img, src_grid, dst_grid)
+
+    # Debug
+    if 1:
+        img_contour = np.copy(img)
+        grid = src_grid
+        for i in range(GRID_CELLS_V + 1):
+            for j in range(GRID_CELLS_H + 1):
+                if j < GRID_CELLS_H:
+                    cv2.line(img_contour, tuple(grid[i, j, :]), tuple(grid[i, j + 1, :]), (0, 255, 0), thickness=10)
+                if i < GRID_CELLS_V:
+                    cv2.line(img_contour, tuple(grid[i, j, :]), tuple(grid[i + 1, j, :]), (0, 255, 0), thickness=10)
+
+        cv2.imshow("Source grid", cv2.resize(img_contour, tuple(np.array(img_contour.shape[1::-1], dtype=int) // 4)))
+        cv2.imshow("Dewarp result", cv2.resize(img_dewarp, tuple(np.array(img_dewarp.shape[1::-1], dtype=int) // 4)))
+        cv2.waitKey()
+
+    return img_dewarp
 
 
-
-def find_extremities(contours: np.ndarray) -> np.ndarray:
+def find_corners(contour: np.ndarray) -> np.ndarray:
     """
     Find the top-left, top-right, bottom-right and bottom-left points.
     :param points: Points to find the extremities from.
-    :return: numpy array of the 4 extremities in order from topLeft to bottomRight.
+    :return: array of the 4 extremities indices: top left, top right, bottom right, bottom left
     """
-    extremities: np.ndarray = np.zeros((4, 2), dtype="float32")
-    points = contours.reshape(-1, 2)
+    s = contour.sum(axis=1)
+    diff = np.diff(contour, axis=1)
 
-    extremities[0] = min(points, key=lambda p: p[0] + p[1])
-    extremities[1] = max(points, key=lambda p: p[0] - p[1])
-    extremities[2] = max(points, key=lambda p: p[1] - p[0])
-    extremities[3] = max(points, key=lambda p: p[0] + p[1])
+    corners = np.zeros(4, dtype=np.int32)
+    corners[0] = np.argmin(s)
+    corners[2] = np.argmax(s)
+    corners[1] = np.argmin(diff)
+    corners[3] = np.argmax(diff)
 
-    return extremities
+    return corners
 
-def calculate_params(pts: np.ndarray):
+
+def interpolate_edges(contour: np.ndarray, corners: np.ndarray, nh: int, nv: int) -> \
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Calculate the parameters of the rectangle.
-    :param pts: Points of the rectangle.
-    :return: Tuple of the rectangle, its width and height.
-
+    Using corner positions, interpolate points on the edges of the contour.
+    The horizontal edges are returned in left to right order.
+    The vertical edges are returned in top to bottom order.
+    :param contour: List of contour points along page, in clockwise order.
+    :param corners: Indices of corners in the contour array (in usual order).
+    :param nh: Number of points along horizontal edges.
+    :param nh: Number of points along vertical edges.
+    :return: Tuple of edge arrays (top, right, bottom, left).
     """
-    rect: np.ndarray = np.zeros((4, 2), dtype="float32")
+    # Reorder contour point so that top left point is first,
+    # so that edges can be indexed continously.
+    contour = np.roll(contour, -corners[0], axis=0)
+    corners = (corners - corners[0]) % contour.shape[0]
+
+    # Top edge
+    ci = corners[0]
+    cni = corners[1]
+    x = np.linspace(contour[ci, 0], contour[cni, 0], nh)
+    pts = contour[ci:cni + 1, :]
+    top = np.zeros((nh, 2))
+    top[:, 0] = x
+    top[:, 1] = np.interp(x, pts[:, 0], pts[:, 1])
+
+    # Right edge
+    ci = corners[1]
+    cni = corners[2]
+    y = np.linspace(contour[ci, 1], contour[cni, 1], nv)
+    pts = contour[ci:cni + 1, :]
+    right = np.zeros((nv, 2))
+    right[:, 0] = np.interp(y, pts[:, 1], pts[:, 0])
+    right[:, 1] = y
+
+    # Bottom edge
+    ci = corners[2]
+    cni = corners[3]
+    x = np.linspace(contour[cni, 0], contour[ci, 0], nh)
+    pts = contour[ci:cni + 1, :][::-1]  # Reverted since we want left to right
+    bottom = np.zeros((nh, 2))
+    bottom[:, 0] = x
+    bottom[:, 1] = np.interp(x, pts[:, 0], pts[:, 1])
+
+    # Left edge (reverted)
+    ci = corners[3]
+    cni = corners[0]
+    y = np.linspace(contour[cni, 1], contour[ci, 1], nv)
+    pts = np.roll(contour, -1, axis=0)[ci - 1:, :][::-1]  # Reverted since we want top to bottom
+    # Roll by -1 to put first corner at last index to also include it.
+    left = np.zeros((nv, 2))
+    left[:, 0] = np.interp(y, pts[:, 1], pts[:, 0])
+    left[:, 1] = y
+
+    return top, right, bottom, left
 
 
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-
-
-    diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-
-    width = max(np.linalg.norm(rect[0] - rect[1]), np.linalg.norm(rect[2] - rect[3]))
-    height = max(np.linalg.norm(rect[0] - rect[3]), np.linalg.norm(rect[1] - rect[2]))
-
-    dst = np.array([
-    [0, 0],
-    [width - 1, 0],
-    [width - 1, height - 1],
-    [0, height - 1]],
-    dtype="float32")
-
-
-    return rect, dst, width, height
-
-def page_curvature(img: np.ndarray, contours: np.ndarray, **kwargs) -> float:
+def create_source_grid(edges: tuple) -> np.ndarray:
     """
-    Calculate the curvature of the page.
-    :param contours: Contours of the page.
-    :return: Curvature of the page.
+    Create a grid from page edge points.
+    The grid is created using top and bottom edges since we assume curvature is mostly along the horizontal axis.
+    :param edges: Edges returned from interpolate_edges.
+    :return: NxMx2 grid of points, where N is the size of horizontal edges and M the size of vertical edges.
     """
-    corners = find_extremities(contours)
-    #rows et cols c'est la taille de l'image en pixels
-    #donc les deux boucles en dessous c'est pour parcourir l'image
-    #faire des grid et faire des warpPerspectives pour ajuster la courbure
-    rows, cols, ch = img.shape
-    grid_size = 100
+    top, right, bottom, left = edges
+    nh = top.shape[0]
+    nv = right.shape[0]
+    grid = np.zeros((nv, nh, 2))
+
+    # Left and right edges are already known, no need to interpolate
+    grid[:, 0, :] = left
+    grid[:, -1, :] = right
+
+    # Interpolate the rest of the grid, using horizontal edges
+    for i in range(1, nh - 1):
+        yp = top[i, 1], bottom[i, 1]
+        y = np.linspace(*yp, nv)
+        x = np.interp(y, yp, (top[i, 0], bottom[i, 0]))
+        grid[:, i, 0] = x
+        grid[:, i, 1] = y
+
+    return np.int32(np.round(grid))
 
 
-    for i in range(0, rows, grid_size):
-        for j in range(0, cols, grid_size):
-            src_pts = np.float32([[j, i], [j + grid_size, i], [j, i + grid_size], [j + grid_size, i + grid_size]])
+def create_destination_grid(edges: tuple) -> np.ndarray:
+    """
+    Create a destination grid from page edge points.
+    The grid is created by approximating page dimensions from the edge lengths.
+    :param edges: Edges returned from interpolate_edges.
+    :return: NxMx2 grid of points, where N is the size of horizontal edges and M the size of vertical edges.
+    """
+    nh = edges[0].shape[0]
+    nv = edges[1].shape[0]
 
-            #Y va falloir utiliser la detection des lignes pour trouver les points de destination
-            dst_pts = np.float32([])
+    # Compute edge lengths and use it to choose the destination grid dimensions
+    # Edge length is computed as the sum of the distance between all of its points
+    lengths = [np.sum(np.sqrt(np.sum(np.diff(e, axis=0) ** 2, axis=1))) for e in edges]
+    width = 0.5 * (lengths[0] + lengths[2])
+    height = 0.5 * (lengths[1] + lengths[3])
 
-            M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-            warped = cv2.warpPerspective(img, M, (cols, rows))
+    # Create grid from coordinate axii
+    x = np.linspace(0, width, nh)
+    y = np.linspace(0, height, nv)
+    xx, yy = np.meshgrid(x, y)
+    grid = np.concatenate((xx[:, :, np.newaxis], yy[:, :, np.newaxis]), axis=2)
 
-            img[i:i + grid_size, j:j + grid_size] = warped[i:i + grid_size, j:j + grid_size]
+    return np.int32(np.round(grid))
 
-    return img
 
+def transform_grid(img: np.ndarray, src_grid: np.ndarray, dst_grid: np.ndarray) -> np.ndarray:
+    """
+    Transform source grid in image to destination grid, creating a new image.
+    Note: this only works for an orthogonal destination grid.
+    :param img: Source image to transform
+    :param src_grid: Source grid points (integers)
+    :param dst_grid: Destination grid points (integers), same shape as src_grid.
+    :return: Transformed image
+    """
+
+    def get_grid_quad(grid, i, j):
+        # Return 4 points array for the cell (i, j) in a grid.
+        DIFF = ((0, 0), (1, 0), (0, 1), (1, 1))
+        return np.float32([tuple(grid[i + dy, j + dx]) for dx, dy in DIFF])
+
+    result = np.zeros((*dst_grid[-1, -1, :][::-1], 3), dtype=np.uint8)
+    for i in range(src_grid.shape[0] - 1):
+        for j in range(src_grid.shape[1] - 1):
+            src_quad = get_grid_quad(src_grid, i, j)
+            dst_quad = get_grid_quad(dst_grid, i, j)
+
+            # Do perspective transform.
+            # Put result in shifted quad to avoid allocating whole image size for each cell.
+            dst_quad_shift = dst_quad - dst_quad[0, :]
+            M = cv2.getPerspectiveTransform(src_quad, dst_quad_shift)
+            cell_size = tuple(np.int32(dst_quad_shift[3, :]))
+            cell = cv2.warpPerspective(img, M, cell_size)
+
+            # Transfer dewarped cell to result image.
+            dst_tl = np.int32(dst_quad[0, :])
+            dst_br = np.int32(dst_quad[3, :])
+            result[dst_tl[1]:dst_br[1], dst_tl[0]:dst_br[0]] = cell
+
+    return result

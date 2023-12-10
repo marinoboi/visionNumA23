@@ -8,7 +8,7 @@ import numpy as np
 
 from color_correction import correct_colors
 from contour_detection import detect_contours
-from dewarp import dewarp_page, find_extremities
+from dewarp import dewarp_page
 from fix_orientation import fix_orientation
 from text_detection import detect_text_lines
 from utils import ScannerException

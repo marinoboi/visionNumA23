@@ -216,7 +216,7 @@ def detect_contours(image: np.ndarray, **kwargs) -> np.ndarray:
     # output: np.ndarray = imutils.resize(output, height = 800)
     # edged: np.ndarray = imutils.resize(edged, height = 800)
     # gray: np.ndarray = imutils.resize(gray, height = 800)
-    return output_contour #, output, edged
+    return output_contour.squeeze(axis=1) #, output, edged
 
     if screenCnt is None:
         return output_contour , output, edged
@@ -277,7 +277,7 @@ if __name__ == '__main__':
         if counter >= len(image_dir):
             counter = 0
         img: np.ndarray = cv2.imread(image_dir[counter])
-        print(image_dir[counter])
+        # print(image_dir[counter])
 
         contours, img, edged = detect_contours(img)
         # cv2.imwrite(os.getcwd() + '/output/original.png', img)
