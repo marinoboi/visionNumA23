@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from color_correction import correct_colors
+from color_correction import correct_colors, remove_fingers
 from contour_detection import detect_contours
 from dewarp import dewarp_page
 from fix_orientation import fix_orientation
@@ -72,8 +72,10 @@ def process_image(img: np.ndarray, **kwargs) -> np.ndarray:
     img_rotated = fix_orientation(img, text_lines, **kwargs)
     contours = detect_contours(img_rotated, **kwargs)
     img_dewarped = dewarp_page(img_rotated, contours, **kwargs)
+    fingers_mask = remove_fingers(img_dewarped, **kwargs)
     img_colored = correct_colors(img_dewarped, **kwargs)
-    return img_colored
+    img_corrected = cv2.add(img_colored, fingers_mask)
+    return img_corrected
 
 
 def main() -> None:
