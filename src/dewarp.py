@@ -32,9 +32,9 @@ def dewarp_page(img: np.ndarray, contour: np.ndarray, **kwargs) -> np.ndarray:
                 if i < GRID_CELLS_V:
                     cv2.line(img_contour, tuple(grid[i, j, :]), tuple(grid[i + 1, j, :]), (0, 255, 0), thickness=10)
 
-        cv2.imshow("Source grid", cv2.resize(img_contour, tuple(np.array(img_contour.shape[1::-1], dtype=int) // 4)))
-        cv2.imshow("Dewarp result", cv2.resize(img_dewarp, tuple(np.array(img_dewarp.shape[1::-1], dtype=int) // 4)))
-        cv2.waitKey()
+        #cv2.imshow("Source grid", cv2.resize(img_contour, tuple(np.array(img_contour.shape[1::-1], dtype=int) // 4)))
+        #cv2.imshow("Dewarp result", cv2.resize(img_dewarp, tuple(np.array(img_dewarp.shape[1::-1], dtype=int) // 4)))
+        #cv2.waitKey()
 
     return img_dewarp
 

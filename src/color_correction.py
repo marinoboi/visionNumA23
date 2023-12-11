@@ -8,17 +8,10 @@ def correct_colors(img: np.ndarray, **kwargs) -> np.ndarray:
     :param img: Image to correct colors for (not modified).
     :return: Image with corrected colors.
     """
-    gamma = 2.2
-    print(gamma)
-
-    lookUpTable = np.empty((1,256), np.uint8)
-    for i in range(256):
-        lookUpTable[0,i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
-    img_corrected = cv2.LUT(img, lookUpTable)
-
-    '''cv2.imshow('Original Image', img)
-    cv2.imshow('Gamma image', img_corrected)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()'''
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    inverted_gray = 255 - gray_img
+    blur_inverted_gray = cv2.GaussianBlur(inverted_gray, (121, 121), 0)
+    blur_gray = 255 - blur_inverted_gray
+    img_corrected = cv2.divide(gray_img, blur_gray, scale=256)
 
     return img_corrected
