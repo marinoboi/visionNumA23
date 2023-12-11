@@ -35,10 +35,3 @@ def crop_image_with_text(img: np.ndarray, lines: np.ndarray, crop_top_bottom:boo
     cropped_img = img[int(y1):int(y2), int(x1):int(x2)]
 
     return cropped_img
-
-# img = cv2.imread("path_to_image.jpg")
-# lines = detect_text_lines(img)
-# cropped_img = crop_image_to_text(img, lines)
-# cv2.imshow("Cropped Image", cropped_img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
