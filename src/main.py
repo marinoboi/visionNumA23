@@ -11,6 +11,7 @@ from contour_detection import detect_contours
 from dewarp import dewarp_page
 from fix_orientation import fix_orientation
 from text_detection import detect_text_lines
+from marge_correction import crop_image_with_text
 from utils import ScannerException
 
 parser = argparse.ArgumentParser(description="Post-processing tool for scanning grayscale books")
@@ -72,9 +73,12 @@ def process_image(img: np.ndarray, **kwargs) -> np.ndarray:
     img_rotated = fix_orientation(img, text_lines, **kwargs)
     contours = detect_contours(img_rotated, **kwargs)
     img_dewarped = dewarp_page(img_rotated, contours, **kwargs)
-    fingers_mask = remove_fingers(img_dewarped, **kwargs)
-    img_colored = correct_colors(img_dewarped, **kwargs)
+    text_lines_marge = detect_text_lines(img_dewarped, **kwargs)
+    img_cropped = crop_image_with_text(img_dewarped, text_lines_marge, False)
+    fingers_mask = remove_fingers(img_cropped, **kwargs)
+    img_colored = correct_colors(img_cropped, **kwargs)
     img_corrected = cv2.add(img_colored, fingers_mask)
+
     return img_corrected
 
 
