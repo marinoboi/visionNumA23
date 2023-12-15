@@ -3,7 +3,9 @@ import argparse
 import cv2
 import numpy as np
 
+from color_correction import correct_colors
 from contour_detection import detect_contours
+from dewarp import dewarp_page
 from fix_orientation import fix_orientation
 from text_detection import detect_text_lines
 
@@ -11,36 +13,38 @@ parser = argparse.ArgumentParser()
 parser.add_argument("input", action="store", type=str, help="Input video")
 parser.add_argument("output", action="store", type=str, help="Output video")
 
-
-def operation1(state: dict) -> np.ndarray:
-    img = state["img"]
-    text_lines = detect_text_lines(img)
+def _detect_text_lines(state: dict) -> np.ndarray:
+    text_lines = detect_text_lines(state["img"], intermediates=state)
     state["text_lines"] = text_lines
-    lsd = cv2.createLineSegmentDetector(cv2.LSD_REFINE_STD)
-    if text_lines.shape[0] > 0:
-        result = lsd.drawSegments(img.copy(), text_lines)
-    else:
-        result = img
-    return result
+    return state["img_text_lines"]
 
 
-def operation2(state: dict) -> np.ndarray:
-    text_lines = state["text_lines"]
-    img_rotated = fix_orientation(state["img"], text_lines)
+def _fix_orientation(state: dict) -> np.ndarray:
+    img_rotated = fix_orientation(state["img"], state["text_lines"], intermediates=state)
     state["img"] = img_rotated
     return img_rotated
 
-
-def operation3(state: dict) -> np.ndarray:
+def _dewarp_grid(state: dict) -> np.ndarray:
     img = state["img"]
-    contours, img_contours, _ = detect_contours(img)
-    return img_contours
+    contour = detect_contours(img, intermediates=state)
+    state["img"] = dewarp_page(img, contour, intermediates=state)
+    return state["img_dewarp_grid"]
+
+def _dewarp_result(state: dict) -> np.ndarray:
+    return state["img"]
+
+def _correct_colors(state: dict) -> np.ndarray:
+    img_corrected = correct_colors(state["img"], intermediates=state)
+    state["img"] = img_corrected
+    return img_corrected
 
 
 OPERATIONS = [
-    operation1,
-    operation2,
-    operation3,
+    _detect_text_lines,
+    _fix_orientation,
+    _dewarp_grid,
+    _dewarp_result,
+    _correct_colors,
 ]
 
 FRAME_HEIGHT = 960
@@ -81,6 +85,8 @@ def main() -> None:
             op_result = op(state)
             width = frame_widths[j]
             resized = cv2.resize(op_result, (width, FRAME_HEIGHT))
+            if len(resized.shape) == 2:
+                resized = np.tile(resized[:, :, np.newaxis], (1, 1, 3))
             new_frame[:, x:x + width, :] = resized
             x += width
 

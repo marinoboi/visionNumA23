@@ -71,8 +71,8 @@ def create_config() -> Config:
 def process_image(img: np.ndarray, **kwargs) -> np.ndarray:
     text_lines = detect_text_lines(img, **kwargs)
     img_rotated = fix_orientation(img, text_lines, **kwargs)
-    contours = detect_contours(img_rotated, **kwargs)
-    img_dewarped = dewarp_page(img_rotated, contours, **kwargs)
+    contour = detect_contours(img_rotated, **kwargs)
+    img_dewarped = dewarp_page(img_rotated, contour, **kwargs)
     text_lines_marge = detect_text_lines(img_dewarped, **kwargs)
     img_cropped = crop_image_with_text(img_dewarped, text_lines_marge, False)
     fingers_mask = remove_fingers(img_cropped, **kwargs)

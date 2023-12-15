@@ -10,6 +10,9 @@ def fix_orientation(img: np.ndarray, lines: np.ndarray, **kwargs) -> np.ndarray:
     :param img: Image to correct
     :return: Corrected image
     """
+    if len(lines) == 0:
+        # No lines detected, can't fix orientation.
+        return img
 
     # +1e-9 to avoid division by zero
     line_angles = np.arctan((lines[:, 0, 1] - lines[:, 0, 3]) / (lines[:, 0, 0] - lines[:, 0, 2] + 1e-9))

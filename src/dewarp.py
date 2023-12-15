@@ -22,7 +22,7 @@ def dewarp_page(img: np.ndarray, contour: np.ndarray, **kwargs) -> np.ndarray:
     img_dewarp = transform_grid(img, src_grid, dst_grid)
 
     # Debug
-    if 1:
+    if "intermediates" in kwargs:
         img_contour = np.copy(img)
         grid = src_grid
         for i in range(GRID_CELLS_V + 1):
@@ -32,9 +32,8 @@ def dewarp_page(img: np.ndarray, contour: np.ndarray, **kwargs) -> np.ndarray:
                 if i < GRID_CELLS_V:
                     cv2.line(img_contour, tuple(grid[i, j, :]), tuple(grid[i + 1, j, :]), (0, 255, 0), thickness=10)
 
-        #cv2.imshow("Source grid", cv2.resize(img_contour, tuple(np.array(img_contour.shape[1::-1], dtype=int) // 4)))
-        #cv2.imshow("Dewarp result", cv2.resize(img_dewarp, tuple(np.array(img_dewarp.shape[1::-1], dtype=int) // 4)))
-        #cv2.waitKey()
+        intermediates = kwargs["intermediates"]
+        intermediates["img_dewarp_grid"] = img_contour
 
     return img_dewarp
 

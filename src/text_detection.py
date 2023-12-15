@@ -32,10 +32,10 @@ def detect_text_lines(img: np.ndarray, **kwargs) -> np.ndarray:
     lines = lines[line_angles < np.radians(30), :, :]
     logging.info(f"{lines.shape[0]} text line segments detected")
 
-    # cv2.imshow("Blurred", img_blur)
-    # cv2.imshow("Canny edges", img_edges)
-    # img_lines = lsd.drawSegments(img_small, lines)
-    # cv2.imshow("Lines overlay", img_lines)
+    if "intermediates" in kwargs:
+        img_lines = img_small if lines.shape[0] == 0 else lsd.drawSegments(img_small, lines)
+        intermediates = kwargs["intermediates"]
+        intermediates["img_text_lines"] = img_lines
 
     lines /= scale
 
